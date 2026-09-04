@@ -3,6 +3,8 @@
 ### Arquitecturas de Software - ARSW
 ## Parcial 1 - Paralelismo - Hilos - Caso BlackListSearch
 
+### Jeyder Nicolay Leon Lancheros
+
 ### Descripción
   Este es un ejercicio de programación con hilos en Java, que permite su aplicación a un caso concreto.
   
