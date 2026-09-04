@@ -8,6 +8,8 @@ package edu.eci.arsw.blacklistvalidator;
 import edu.eci.arsw.spamkeywordsdatasource.HostBlacklistsDataSourceFacade;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -41,11 +43,14 @@ public class HostBlackListsValidator {
         int listasPorHilo=totalListas/N;
         int sobrantes=totalListas%N;
         BlackListSearchThread[] hilos=new BlackListSearchThread[N];
+        AtomicInteger ocurrenciasTotales=new AtomicInteger();
+        AtomicBoolean terminar=new AtomicBoolean();
         int inicio=0;
         
         for (int i=0;i<N;i++){
             int listasEsteHilo=listasPorHilo+(i<sobrantes ? 1 : 0);
-            hilos[i]=new BlackListSearchThread(ipaddress, inicio, inicio+listasEsteHilo);
+                hilos[i]=new BlackListSearchThread(ipaddress, inicio, inicio+listasEsteHilo,
+                    ocurrenciasTotales, terminar);
             hilos[i].start();
             inicio+=listasEsteHilo;
         }
