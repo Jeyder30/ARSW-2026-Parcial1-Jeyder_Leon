@@ -29,37 +29,49 @@ public class HostBlackListsValidator {
      * @param ipaddress suspicious host's IP address.
      * @return  Blacklists numbers where the given host's IP address was found.
      */
-    public List<Integer> checkHost(String ipaddress){
+    public List<Integer> checkHost(String ipaddress, int N){
+        if (N <= 0){
+            throw new IllegalArgumentException("El número de hilos debe ser mayor que cero");
+        }
         
-        LinkedList<Integer> blackListOcurrences=new LinkedList<>();
+        LinkedList<Integer> ocurrencias=new LinkedList<>();
         
-        int ocurrencesCount=0;
+        HostBlacklistsDataSourceFacade fuente=HostBlacklistsDataSourceFacade.getInstance();
+        int totalListas=fuente.getRegisteredServersCount();
+        int listasPorHilo=totalListas/N;
+        int sobrantes=totalListas%N;
+        BlackListSearchThread[] hilos=new BlackListSearchThread[N];
+        int inicio=0;
         
-        HostBlacklistsDataSourceFacade skds=HostBlacklistsDataSourceFacade.getInstance();
+        for (int i=0;i<N;i++){
+            int listasEsteHilo=listasPorHilo+(i<sobrantes ? 1 : 0);
+            hilos[i]=new BlackListSearchThread(ipaddress, inicio, inicio+listasEsteHilo);
+            hilos[i].start();
+            inicio+=listasEsteHilo;
+        }
         
-        int checkedListsCount=0;
-        
-        for (int i=0;i<skds.getRegisteredServersCount() && ocurrencesCount<BLACK_LIST_ALARM_COUNT;i++){
-            checkedListsCount++;
-            
-            if (skds.isInBlackListServer(i, ipaddress)){
-                
-                blackListOcurrences.add(i);
-                
-                ocurrencesCount++;
+        for (BlackListSearchThread hilo : hilos){
+            try {
+                hilo.join();
+                ocurrencias.addAll(hilo.getBlackListOccurrences());
+            } catch (InterruptedException error) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("La búsqueda fue interrumpida", error);
             }
         }
         
-        if (ocurrencesCount>=BLACK_LIST_ALARM_COUNT){
-            skds.reportAsNotTrustworthy(ipaddress);
+        int totalOcurrencias=ocurrencias.size();
+        
+        if (totalOcurrencias>=BLACK_LIST_ALARM_COUNT){
+            fuente.reportAsNotTrustworthy(ipaddress);
         }
         else{
-            skds.reportAsTrustworthy(ipaddress);
+            fuente.reportAsTrustworthy(ipaddress);
         }                
         
-        LOG.log(Level.INFO, "Checked Black Lists:{0} of {1}", new Object[]{checkedListsCount, skds.getRegisteredServersCount()});
+        LOG.log(Level.INFO, "Checked Black Lists:{0} of {1}", new Object[]{totalListas, totalListas});
         
-        return blackListOcurrences;
+        return ocurrencias;
     }
     
     
